@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVN Solar Consulting | Solar Marketplace & AMC Services</title>
+  <meta name="description" content="SVN Solar Consulting - Solar Vision & New Energy. Verified solar installers, PM Surya Ghar subsidy guidance, quotation comparison, and comprehensive solar AMC & maintenance in India.">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="/" class="brand">
+        <div class="brand-icon">☀</div>
+        <div class="brand-text">
+          <h1>SVN Solar Consulting</h1>
+          <p>Solar Vision & New Energy · एमपी एवं भारत का सोलर नेटवर्क</p>
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#calculator">सोलर कैलकुलेटर</a></li>
+        <li><a href="#solutions">समाधान (Solutions)</a></li>
+        <li><a href="#ai-assistant">AI असिस्टेंट</a></li>
+        <li><a href="#amc-plans">AMC पैकेजेस</a></li>
+        <li><a href="/portal.html" id="nav-auth-btn" class="btn btn-primary btn-sm">Login / Portal</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="container hero-grid">
+      <div>
+        <div class="hero-tag">☀ PM सूर्य घर मुफ्त बिजली योजना अधिकृत कंसल्टिंग</div>
+        <h1 class="hero-title">
+          बिजली बिल को <span>शून्य (₹0)</span> करें, घर लाएँ सुरक्षित सोलर ऊर्जा!
+        </h1>
+        <p class="hero-sub">
+          SVN Solar Consulting आपको देता है सर्टिफाइड वेंडर्स से बेस्ट कोटेशन, ₹78,000 तक की सरकारी सब्सिडी मार्गदर्शन, और 25 वर्षों तक सोलर सिस्टम की संपूर्ण AMC व मेंटेनेंस सुरक्षा।
+        </p>
+        <div class="hero-cta-group">
+          <a href="#ai-assistant" class="btn btn-primary">
+            🤖 AI Solar Assistant से क्षमता जानें
+          </a>
+          <a href="#amc-plans" class="btn btn-outline">
+            🛡️ सोलर AMC पैकेज देखें
+          </a>
+          <a href="/portal.html" class="btn btn-accent">
+            🏢 वेंडर / ग्राहक पोर्टल
+          </a>
+        </div>
+        <div class="hero-features">
+          <div class="hero-feature-item">
+            <span>✓</span> 100% वेरिफाइड लोकल वेंडर्स
+          </div>
+          <div class="hero-feature-item">
+            <span>✓</span> डिजिटल वारंटी रिकॉर्ड्स
+          </div>
+          <div class="hero-feature-item">
+            <span>✓</span> 24–48 घंटे में सर्विस सपोर्ट
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Interactive Calculator Card -->
+      <div class="calc-card" id="calculator">
+        <div class="calc-header">
+          <h3>⚡ त्वरित सोलर बचत कैलकुलेटर</h3>
+          <p>अपना औसत मासिक बिजली बिल दर्ज करें और तुरंत बचत जानें:</p>
+        </div>
+        <div class="form-group">
+          <label for="calcBill">मासिक बिजली बिल (₹):</label>
+          <input type="number" id="calcBill" class="form-control" value="3500" step="500" min="500">
+        </div>
+        <div class="calc-result-box">
+          <div class="calc-stats-grid">
+            <div>
+              <div class="calc-stat-val" id="resKw">3.9 kW</div>
+              <div class="calc-stat-lbl">अनुशंसित सोलर प्लांट</div>
+            </div>
+            <div>
+              <div class="calc-stat-val" id="resSpace">350 sq ft</div>
+              <div class="calc-stat-lbl">आवश्यक छायामुक्त छत</div>
+            </div>
+            <div>
+              <div class="calc-stat-val" id="resSavings">₹37,800/yr</div>
+              <div class="calc-stat-lbl">सालाना बिजली बचत</div>
+            </div>
+            <div>
+              <div class="calc-stat-val" id="resSubsidy">₹78,000</div>
+              <div class="calc-stat-lbl">अनुमानित सरकारी सब्सिडी</div>
+            </div>
+          </div>
+          <div style="text-align: center; margin-top: 14px; font-size: 0.85rem; color: #166534; font-weight: 700;">
+            निवेश वापसी (Payback Period): <span id="resPayback">3.2 Years</span>
+          </div>
+        </div>
+        <div style="margin-top: 16px;">
+          <a href="#ai-assistant" class="btn btn-primary btn-sm" style="width: 100%;">
+            इस साइज के लिए कोटेशन प्राप्त करें →
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Solutions Section -->
+  <section class="section" id="solutions">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-title">SVN Solar सम्पूर्ण ऊर्जा समाधान</h2>
+        <p class="section-desc">घरेलू छत से लेकर बड़े औद्योगिक शेड और कृषि पंप तक—हर जरूरत के लिए विशेषज्ञ परामर्श।</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-icon">🏠</div>
+          <h3>Residential Rooftop Solar</h3>
+          <p>
+            1 kW से 10 kW तक ऑन-ग्रिड सोलर सिस्टम। पीएम सूर्य घर योजना के तहत ₹78,000 तक की डायरेक्ट बैंक ट्रांसफर (DBT) सब्सिडी और नेट-मीटरिंग के साथ 25 वर्षों तक मुफ्त बिजली।
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🏭</div>
+          <h3>Commercial & Industrial</h3>
+          <p>
+            दुकानों, अस्पतालों, मैरिज गार्डन्स, कॉलेजों और फैक्ट्रियों के लिए हेवी-ड्यूटी सोलर इंस्टॉलेशन। बिजली बिल में 70–85% तक की बचत और त्वरित 40% टैक्स डेप्रिसिएशन लाभ।
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🌾</div>
+          <h3>Solar Agricultural Pump</h3>
+          <p>
+            3 HP से 10 HP तक के AC/DC सबमर्सिबल व सरफेस सोलर पंप। बिना ग्रिड पावर या डीजल खर्च के खेतों में भरपूर सिंचाई, कुसुम योजना सब्सिडी परामर्श सहित।
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🛡️</div>
+          <h3>Annual Maintenance (AMC)</h3>
+          <p>
+            नियमित पैनल्स की स्पेशल डी-मिनरलाइज्ड धुलाई, इन्वर्टर टेस्टिंग, अर्थिंग जांच और प्राथमिकता फॉल्ट रिपेयर। सोलर जनरेशन को हमेशा 100% पीक पर रखें।
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚖️</div>
+          <h3>Quotation Comparison</h3>
+          <p>
+            एक ही जगह पर कई सर्टिफाइड सोलर वेंडर्स के तकनीकी कोटेशन (पैनल ब्रांड, इन्वर्टर मॉडल, कीमत व वारंटी) की पारदर्शी तुलना करें और सही निर्णय लें।
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📄</div>
+          <h3>Digital Solar File & Warranty</h3>
+          <p>
+            SVN पोर्टल पर अपने सोलर सिस्टम का सीरियल नंबर, कमीशनिंग डेट, इन्वर्टर वारंटी कार्ड व सर्विस रिकॉर्ड्स सुरक्षित रखें—कभी कोई दस्तावेज न खोएं।
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive AI Solar Assistant -->
+  <section class="section section-alt" id="ai-assistant">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-title">🤖 AI Solar Requirement Assistant</h2>
+        <p class="section-desc">
+          नीचे दिए गए छोटे सवालों के जवाब दें। हमारा स्मार्ट असिस्टेंट आपकी छत, बिजली बिल और बजट के अनुसार सही सिस्टम बताएगा और ऑटोमैटिक लीड दर्ज करेगा।
+        </p>
+      </div>
+
+      <div class="ai-assistant-container">
+        <div class="ai-header">
+          <div class="ai-avatar">☀</div>
+          <div>
+            <h3 style="font-size: 1.1rem; margin: 0;">SVN Smart Solar Consultant</h3>
+            <p style="font-size: 0.8rem; opacity: 0.9; margin: 0;">Online · Free Sizing & Subsidy Guidance</p>
+          </div>
+        </div>
+
+        <div class="ai-chat-body" id="aiChatBody">
+          <!-- Chat bubbles rendered dynamically -->
+        </div>
+
+        <div class="ai-options-panel" id="aiOptionsPanel">
+          <!-- Option chips rendered dynamically -->
+        </div>
+
+        <div class="ai-input-panel" id="aiInputPanel" style="display: none;">
+          <input type="text" id="aiTextInput" class="form-control" placeholder="यहाँ लिखें...">
+          <button id="aiSendBtn" class="btn btn-primary">भेजें</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AMC Plans Section -->
+  <section class="section" id="amc-plans">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-title">सुरक्षा एवं मेंटेनेंस पैकेज (AMC Plans)</h2>
+        <p class="section-desc">
+          धूल-मिट्टी और इन्वर्टर फॉल्ट के कारण सोलर जनरेशन 20–35% तक गिर सकती है। SVN सोलर AMC प्लान आपके सिस्टम की नियमित देखभाल सुनिश्चित करता है।
+        </p>
+      </div>
+
+      <div class="grid-3">
+        <!-- Bronze -->
+        <div class="plan-card">
+          <span class="plan-badge">Popular for Homes</span>
+          <h3>Bronze Basic</h3>
+          <div class="plan-price">₹3,499<span>/वर्ष</span></div>
+          <ul class="plan-features">
+            <li>✓ साल में 2 शेड्यूल्ड विजिट्स (Bi-Annual)</li>
+            <li>✓ सोलर पैनल डीप क्लीनिंग (धूल व काई हटाना)</li>
+            <li>✓ इन्वर्टर एरर कोड स्कैन व हेल्थ चेक</li>
+            <li>✓ डीसी/एसी केबल टाइटनिंग व सेफ्टी इंस्पेक्शन</li>
+            <li>✓ 48 घंटे में फोन व व्हाट्सएप सपोर्ट</li>
+          </ul>
+          <a href="/portal.html?plan=Bronze+Basic" class="btn btn-outline" style="width: 100%;">
+            यह प्लान चुनें
+          </a>
+        </div>
+
+        <!-- Silver -->
+        <div class="plan-card featured">
+          <span class="plan-badge">सर्वाधिक अनुशंसित (Recommended)</span>
+          <h3>Silver Standard</h3>
+          <div class="plan-price">₹5,999<span>/वर्ष</span></div>
+          <ul class="plan-features">
+            <li>✓ साल में 4 शेड्यूल्ड विजिट्स (Quarterly Wash)</li>
+            <li>✓ वाटर जेट पैनल क्लीनिंग एवं डस्ट लॉस रिकवरी</li>
+            <li>✓ इन्वर्टर वोल्टेज, फ्रीक्वेंसी व ग्रिड टेस्ट</li>
+            <li>✓ अर्थिंग पिट एवं लाइटनिंग अरेस्टर मेजरमेंट</li>
+            <li>✓ 24–48 घंटे में प्रायोरिटी टेक्नीशियन विजिट</li>
+            <li>✓ त्रैमासिक जनरेशन एफिशिएंसी रिपोर्ट</li>
+          </ul>
+          <a href="/portal.html?plan=Silver+Standard" class="btn btn-primary" style="width: 100%;">
+            यह प्लान चुनें
+          </a>
+        </div>
+
+        <!-- Gold -->
+        <div class="plan-card">
+          <span class="plan-badge">Zero Downtime</span>
+          <h3>Gold Comprehensive</h3>
+          <div class="plan-price">₹9,999<span>/वर्ष</span></div>
+          <ul class="plan-features">
+            <li>✓ साल में 6 विजिट्स (हर 2 महीने में प्रिवेंटिव सर्विस)</li>
+            <li>✓ अनलिमिटेड इमरजेंसी ब्रेकडाउन कॉल्स (24h रेस्पॉन्स)</li>
+            <li>✓ इन्फ्रारेड थर्मल स्कैन (हॉटस्पॉट डिडक्शन)</li>
+            <li>✓ इन्वर्टर पार्ट्स व वारंटी रिप्लेसमेंट सहायता</li>
+            <li>✓ नेट-मीटरिंग व DISCOM बिल रीकंसीलिएशन</li>
+            <li>✓ डेडिकेटेड पर्सनल सोलर मैनेजर</li>
+          </ul>
+          <a href="/portal.html?plan=Gold+Comprehensive" class="btn btn-outline" style="width: 100%;">
+            यह प्लान चुनें
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Vendor Partner Banner -->
+  <section class="section section-alt" style="padding: 50px 0;">
+    <div class="container" style="background: white; border-radius: 16px; padding: 40px; border: 1px solid var(--border); box-shadow: var(--shadow);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px;">
+        <div style="max-width: 650px;">
+          <span class="badge badge-warning" style="margin-bottom: 10px;">सोलर वेंडर्स एवं टेक्नीशियंस के लिए</span>
+          <h2 style="font-size: 1.8rem; margin-bottom: 10px;">क्या आप सोलर इंस्टॉलर या सर्विस प्रोवाइडर हैं?</h2>
+          <p class="muted">
+            SVN Solar नेटवर्क से जुड़ें! अपने शहर और जिले (सतना, रीवा, मैहर, पन्ना, कटनी आदि) में प्री-वेरिफाइड ग्राहक लीड्स और AMC सर्विस वर्क ऑर्डर्स प्राप्त करें।
+          </p>
+        </div>
+        <div>
+          <a href="/portal.html?role=vendor" class="btn btn-primary">
+            🏢 वेंडर रजिस्ट्रेशन करें →
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="grid-3" style="gap: 36px;">
+        <div>
+          <h4 style="display: flex; align-items: center; gap: 8px;">☀ SVN Solar Consulting</h4>
+          <p style="margin-top: 10px; line-height: 1.7;">
+            Solar Vision & New Energy.<br>
+            सत्यापित सोलर मार्केटप्लेस, कोटेशन तुलना एवं वार्षिक मेंटेनेंस (AMC) प्रबंधन।
+          </p>
+          <p style="margin-top: 10px; font-size: 0.85rem;">
+            <b>मुख्यालय:</b> सतना / रीवा, मध्य प्रदेश, भारत<br>
+            <b>हेल्पलाइन:</b> +91 94251 77201 | support@svnsolar.local
+          </p>
+        </div>
+        <div>
+          <h4>त्वरित लिंक्स</h4>
+          <ul style="list-style: none; line-height: 2;">
+            <li><a href="#calculator">सोलर कैलकुलेटर</a></li>
+            <li><a href="#solutions">सोलर इंस्टॉलेशन समाधान</a></li>
+            <li><a href="#amc-plans">AMC पैकेजेस</a></li>
+            <li><a href="/portal.html">ग्राहक पोर्टल</a></li>
+            <li><a href="/portal.html">वेंडर पार्टनर लॉगिन</a></li>
+            <li><a href="/portal.html">एडमिन डैशबोर्ड</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>सरकारी नीतियां एवं सुरक्षा</h4>
+          <p style="line-height: 1.7; font-size: 0.85rem;">
+            • PM Surya Ghar: Muft Bijli Yojana<br>
+            • PM-KUSUM Solar Agricultural Pumps<br>
+            • DISCOM Net-Metering Standards<br>
+            • IEC 61215 / ALMM Approved Tier-1 Panels Only
+          </p>
+          <div style="margin-top: 16px;">
+            <a href="/portal.html" class="btn btn-outline btn-sm">पोर्टल में प्रवेश करें</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 SVN Solar Consulting. सर्वाधिकार सुरक्षित · Made for India's Clean Energy Transition</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

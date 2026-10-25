@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVN Solar Portal | Customer · Vendor · Admin</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="/" class="brand">
+        <div class="brand-icon">☀</div>
+        <div class="brand-text">
+          <h1>SVN Solar Portal</h1>
+          <p>Customer · Partner Vendor · Operations Management</p>
+        </div>
+      </a>
+      <div>
+        <a href="/" class="btn btn-outline btn-sm">← मुख्य वेबसाइट (Home)</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container" style="padding-top: 30px; padding-bottom: 60px;">
+
+    <!-- ================== 1. AUTH VIEW (When not logged in) ================== -->
+    <div id="auth-view" style="display: none; max-width: 900px; margin: 0 auto;">
+      <div class="section-head" style="margin-bottom: 30px;">
+        <h2>SVN Solar पोर्टल लॉगिन एवं रजिस्ट्रेशन</h2>
+        <p class="section-desc">ग्राहक, प्रमाणित सोलर वेंडर्स एवं एडमिन के लिए एकीकृत पोर्टल।</p>
+      </div>
+
+      <div class="grid-3" style="grid-template-columns: 1fr 1.2fr; gap: 30px;">
+        <!-- Login Card -->
+        <div class="card">
+          <h3>🔐 लॉगिन करें (Login)</h3>
+          <p class="muted" style="margin-bottom: 16px; font-size: 0.85rem;">
+            अपने रजिस्टर्ड ईमेल और पासवर्ड से प्रवेश करें:
+          </p>
+          <form onsubmit="handleLogin(event)">
+            <div class="form-group">
+              <label>ईमेल (Email):</label>
+              <input type="email" id="login-email" class="form-control" required placeholder="name@example.com">
+            </div>
+            <div class="form-group">
+              <label>पासवर्ड (Password):</label>
+              <input type="password" id="login-password" class="form-control" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">
+              लॉगिन करें
+            </button>
+          </form>
+
+          <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 8px;">डेमो टेस्ट के लिए त्वरित एडमिन लॉगिन:</p>
+            <button class="btn btn-outline btn-sm" style="width: 100%;" onclick="quickFillAdmin()">
+              ⚡ ऑटो-फिल एडमिन क्रेडेंशियल्स
+            </button>
+          </div>
+        </div>
+
+        <!-- Register Card -->
+        <div class="card">
+          <h3>📝 नया अकाउंट बनाएँ (Register)</h3>
+          <p class="muted" style="margin-bottom: 16px; font-size: 0.85rem;">
+            ग्राहक (सोलर लगवाने/सर्विस के लिए) या वेंडर (सोलर इंस्टॉलर/पार्टनर) के रूप में जुड़ें:
+          </p>
+          <form onsubmit="handleRegister(event)">
+            <div class="form-group">
+              <label>अकाउंट प्रकार (Role):</label>
+              <select id="reg-role" class="form-control" onchange="toggleVendorRegisterFields()">
+                <option value="customer">सोलर ग्राहक (Customer - Home / Commercial)</option>
+                <option value="vendor">सोलर वेंडर / इंस्टॉलर (Solar Installer / Vendor)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>पूरा नाम / संपर्क व्यक्ति (Name):</label>
+              <input type="text" id="reg-name" class="form-control" required placeholder="e.g. Rahul Sharma">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label>ईमेल (Email):</label>
+                <input type="email" id="reg-email" class="form-control" required placeholder="rahul@example.com">
+              </div>
+              <div class="form-group">
+                <label>मोबाइल (Phone):</label>
+                <input type="text" id="reg-phone" class="form-control" required placeholder="9893012345">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>पासवर्ड (कम से कम 8 अक्षर):</label>
+              <input type="password" id="reg-password" class="form-control" required placeholder="••••••••">
+            </div>
+
+            <!-- Vendor Specific Fields -->
+            <div id="vendor-specific-fields" style="display: none; background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px;">
+              <div class="form-group">
+                <label>कंपनी / फर्म का नाम:</label>
+                <input type="text" id="reg-company" class="form-control" placeholder="e.g. Vindhya Solar Power LLP">
+              </div>
+              <div class="form-group">
+                <label>सेवा क्षेत्र / जिले (कॉमा से अलग करें):</label>
+                <input type="text" id="reg-areas" class="form-control" placeholder="Satna, Rewa, Maihar, Katni">
+              </div>
+              <div class="form-group">
+                <label>विशेषज्ञता (सेवा प्रकार):</label>
+                <input type="text" id="reg-types" class="form-control" placeholder="Residential Rooftop, Solar Pump, AMC">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              रजिस्टर करें
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== 2. PORTAL VIEW (When logged in) ================== -->
+    <div id="portal-view" style="display: none;">
+      <!-- Top user bar -->
+      <div class="portal-header">
+        <div class="portal-top-bar">
+          <div class="user-badge">
+            <div class="user-avatar" id="portal-user-avatar">☀</div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <h3 id="portal-user-name" style="margin: 0; font-size: 1.15rem;">User</h3>
+                <span id="portal-user-role" class="badge badge-info">Role</span>
+              </div>
+              <p id="portal-user-email" class="muted" style="margin: 0; font-size: 0.85rem;">email@example.com</p>
+            </div>
+          </div>
+          <div>
+            <button class="btn btn-outline btn-sm" onclick="logoutUser()">लॉगआउट (Logout)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation tabs -->
+      <div class="tabs-nav" id="portal-tabs-nav">
+        <!-- Rendered based on role -->
+      </div>
+
+      <!-- Dynamic Content Body -->
+      <div id="portal-content">
+        <!-- Rendered by active tab handler -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================== MODALS ================== -->
+
+  <!-- Modal: Submit New Solar Lead (Customer) -->
+  <div class="modal-overlay" id="newLeadModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('newLeadModal')">×</button>
+      <h3>📋 नया सोलर प्रोजेक्ट अनुरोध (New Solar Request)</h3>
+      <p class="muted" style="font-size: 0.85rem; margin-bottom: 16px;">
+        अपनी छत या परिसर के लिए फ्री तकनीकी डिजाइन व कोटेशन अनुरोध सबमिट करें।
+      </p>
+      <form onsubmit="handleCustomerSubmitLead(event)">
+        <div class="form-group">
+          <label>प्रोजेक्ट प्रकार:</label>
+          <select id="modal-lead-type" class="form-control" required>
+            <option>Residential Rooftop</option>
+            <option>Commercial</option>
+            <option>Industrial</option>
+            <option>Solar Agricultural Pump</option>
+            <option>Repair / AMC</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>शहर / जिला (City):</label>
+          <input type="text" id="modal-lead-city" class="form-control" required placeholder="Satna">
+        </div>
+        <div class="form-group">
+          <label>औसत मासिक बिजली बिल:</label>
+          <input type="text" id="modal-lead-bill" class="form-control" placeholder="₹3,500">
+        </div>
+        <div class="form-group">
+          <label>अनुमानित बजट:</label>
+          <input type="text" id="modal-lead-budget" class="form-control" placeholder="₹1.5 - 2 Lakhs">
+        </div>
+        <div class="form-group">
+          <label>छत / जमीन की उपलब्धता:</label>
+          <input type="text" id="modal-lead-space" class="form-control" placeholder="300 sq ft RCC roof">
+        </div>
+        <div class="form-group">
+          <label>अतिरिक्त विवरण या आवश्यकता:</label>
+          <textarea id="modal-lead-req" class="form-control" rows="3" placeholder="जैसे 3 kW ऑन-ग्रिड सिस्टम, सब्सिडी सहायता चाहिए..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          सोलर रिक्वेस्ट सबमिट करें
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Request AMC Plan (Customer) -->
+  <div class="modal-overlay" id="requestAmcModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('requestAmcModal')">×</button>
+      <h3>🛡️ सोलर AMC पैकेज बुक करें (Book AMC)</h3>
+      <p class="muted" style="font-size: 0.85rem; margin-bottom: 16px;">
+        चुने हुए AMC प्लान के तहत वर्ष भर नियमित सफाई व मेंटेनेंस प्राप्त करें।
+      </p>
+      <form onsubmit="handleCustomerSubmitAMC(event)">
+        <div class="form-group">
+          <label>प्लान का नाम:</label>
+          <input type="text" id="modal-amc-plan" class="form-control" readonly>
+        </div>
+        <div class="form-group">
+          <label>सालाना शुल्क (Annual Price):</label>
+          <input type="text" id="modal-amc-price" class="form-control" readonly>
+        </div>
+        <div class="form-group">
+          <label>सोलर सिस्टम ID:</label>
+          <input type="text" id="modal-amc-sysid" class="form-control" required placeholder="e.g. SVN-SYS-101 (या नया सोलर)">
+        </div>
+        <div class="form-group">
+          <label>कोई विशेष नोट / दिशा-निर्देश:</label>
+          <textarea id="modal-amc-notes" class="form-control" rows="2" placeholder="जैसे छत पर पानी का कनेक्शन उपलब्ध है..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          AMC रिक्वेस्ट दर्ज करें
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Book Service / Cleaning (Customer) -->
+  <div class="modal-overlay" id="bookServiceModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('bookServiceModal')">×</button>
+      <h3>🔧 सर्विस / पैनल सफाई बुक करें (Book Service)</h3>
+      <p class="muted" style="font-size: 0.85rem; margin-bottom: 16px;">
+        पैनल क्लीनिंग, इन्वर्टर एरर कोड डायग्नोस्टिक या सामान्य मरम्मत के लिए सर्विस बुक करें।
+      </p>
+      <form onsubmit="handleCustomerSubmitService(event)">
+        <div class="form-group">
+          <label>सर्विस प्रकार (Service Type):</label>
+          <select id="modal-srv-type" class="form-control" required>
+            <option>Panel Cleaning</option>
+            <option>Inverter Fault / Diagnostics</option>
+            <option>Low Generation Investigation</option>
+            <option>Wiring & Earthing Inspection</option>
+            <option>Scheduled AMC Preventive Visit</option>
+            <option>Emergency Breakdown</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>सोलर सिस्टम ID (यदि उपलब्ध हो):</label>
+          <input type="text" id="modal-srv-sysid" class="form-control" placeholder="e.g. SVN-SYS-101">
+        </div>
+        <div class="form-group">
+          <label>शहर / लोकेशन:</label>
+          <input type="text" id="modal-srv-city" class="form-control" placeholder="Satna">
+        </div>
+        <div class="form-group">
+          <label>पसंदीदा दिनांक (Preferred Date):</label>
+          <input type="date" id="modal-srv-date" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>समस्या या जरूरत का विवरण:</label>
+          <textarea id="modal-srv-desc" class="form-control" required rows="3" placeholder="समस्या विस्तार से लिखें..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          सर्विस रिक्वेस्ट बुक करें
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Submit Quotation (Vendor) -->
+  <div class="modal-overlay" id="submitQuoteModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('submitQuoteModal')">×</button>
+      <h3>💰 कोटेशन सबमिट करें (Submit Proposal)</h3>
+      <form onsubmit="handleVendorSubmitQuote(event)">
+        <input type="hidden" id="modal-quote-leadid">
+        <div class="form-group">
+          <label>सिस्टम क्षमता (System Capacity):</label>
+          <input type="text" id="modal-quote-capacity" class="form-control" required placeholder="3.3 kW On-Grid">
+        </div>
+        <div class="form-group">
+          <label>पैनल विवरण (Brand & Technology):</label>
+          <input type="text" id="modal-quote-panels" class="form-control" placeholder="e.g. Waaree 540W Mono PERC Bifacial (6 Nos)">
+        </div>
+        <div class="form-group">
+          <label>इन्वर्टर विवरण (Inverter Make & Capacity):</label>
+          <input type="text" id="modal-quote-inverter" class="form-control" placeholder="e.g. Growatt 3.3 kW Single Phase String">
+        </div>
+        <div class="form-group">
+          <label>कुल कीमत ₹ (Total Quoted Price):</label>
+          <input type="number" id="modal-quote-price" class="form-control" required placeholder="185000">
+        </div>
+        <div class="form-group">
+          <label>वारंटी शर्तें (Warranty Terms):</label>
+          <input type="text" id="modal-quote-warranty" class="form-control" placeholder="25y Panel performance, 5y Inverter, 1y Workmanship">
+        </div>
+        <div class="form-group">
+          <label>अनुमानित कार्य दिवस (Est. Days to Complete):</label>
+          <input type="number" id="modal-quote-days" class="form-control" value="7" min="1">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          कोटेशन ग्राहक को भेजें
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Assign Vendor to Lead (Admin) -->
+  <div class="modal-overlay" id="assignVendorModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('assignVendorModal')">×</button>
+      <h3>🏢 लीड के लिए वेंडर असाइन करें (Assign Installer)</h3>
+      <form onsubmit="handleAdminAssignVendor(event)">
+        <input type="hidden" id="modal-assign-leadid">
+        <div class="form-group">
+          <label>प्रमाणित वेंडर चुनें (Verified Vendor):</label>
+          <select id="modal-assign-vendor-select" class="form-control" required>
+            <!-- Populated dynamically from window._allVendors -->
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          वेंडर असाइन करें
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Create Customer Solar File (Admin) -->
+  <div class="modal-overlay" id="createSolarFileModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('createSolarFileModal')">×</button>
+      <h3>☀ ग्राहक सोलर फाइल दर्ज करें (Register Solar System)</h3>
+      <form onsubmit="handleAdminCreateSolarFile(event)">
+        <div class="form-group">
+          <label>ग्राहक का रजिस्टर्ड ईमेल:</label>
+          <input type="email" id="modal-file-email" class="form-control" required placeholder="customer@example.com">
+        </div>
+        <div class="form-group">
+          <label>ग्राहक का नाम:</label>
+          <input type="text" id="modal-file-name" class="form-control" required placeholder="Rahul Sharma">
+        </div>
+        <div class="form-group">
+          <label>मोबाइल नंबर:</label>
+          <input type="text" id="modal-file-phone" class="form-control" placeholder="9893012345">
+        </div>
+        <div class="form-group">
+          <label>शहर / जिला:</label>
+          <input type="text" id="modal-file-city" class="form-control" required placeholder="Satna">
+        </div>
+        <div class="form-group">
+          <label>सिस्टम क्षमता (kW):</label>
+          <input type="number" id="modal-file-kw" class="form-control" required step="0.1" placeholder="3.3">
+        </div>
+        <div class="form-group">
+          <label>सोलर पैनल्स का ब्रांड व टेक्नोलॉजी:</label>
+          <input type="text" id="modal-file-panel" class="form-control" placeholder="Waaree 540W Mono PERC Bifacial">
+        </div>
+        <div class="form-group">
+          <label>इन्वर्टर ब्रांड व क्षमता:</label>
+          <input type="text" id="modal-file-inv" class="form-control" placeholder="Growatt 3.3 kW Single Phase">
+        </div>
+        <div class="form-group">
+          <label>पैनल वारंटी (वर्ष):</label>
+          <input type="number" id="modal-file-warranty" class="form-control" value="25">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          डिजिटल सोलर फाइल सेव करें
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Activate AMC Contract (Admin) -->
+  <div class="modal-overlay" id="activateAmcModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('activateAmcModal')">×</button>
+      <h3>🛡️ AMC अनुबंध सक्रिय करें (Activate AMC)</h3>
+      <form onsubmit="handleAdminActivateAMC(event)">
+        <input type="hidden" id="modal-actamc-id">
+        <div class="form-group">
+          <label>अवधि (महीने):</label>
+          <select id="modal-actamc-months" class="form-control">
+            <option value="12">1 वर्ष (12 Months)</option>
+            <option value="24">2 वर्ष (24 Months)</option>
+            <option value="36">3 वर्ष (36 Months)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>सर्विस वेंडर को भुगतान ₹ (Vendor Payout):</label>
+          <input type="number" id="modal-actamc-payout" class="form-control" placeholder="4000" value="4000">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          अनुबंध सक्रिय (Active) करें
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/portal.js"></script>
+  <script>
+    // Specific modal action handlers
+    function openNewLeadModal() { openModal("newLeadModal"); }
+    async function handleCustomerSubmitLead(e) {
+      e.preventDefault();
+      try {
+        const payload = {
+          projectType: document.getElementById("modal-lead-type").value,
+          city: document.getElementById("modal-lead-city").value,
+          monthlyBill: document.getElementById("modal-lead-bill").value,
+          budget: document.getElementById("modal-lead-budget").value,
+          spaceAvailable: document.getElementById("modal-lead-space").value,
+          requirement: document.getElementById("modal-lead-req").value
+        };
+        const res = await api("/api/leads", "POST", payload);
+        showToast(res.message, "success");
+        closeModal("newLeadModal");
+        loadCustomerLeads();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    function openRequestAmcModal(planName, price) {
+      document.getElementById("modal-amc-plan").value = planName;
+      document.getElementById("modal-amc-price").value = formatCurrency(price);
+      openModal("requestAmcModal");
+    }
+
+    function openAmcModalFromSystem(sysId) {
+      document.getElementById("modal-amc-plan").value = "Silver Standard";
+      document.getElementById("modal-amc-price").value = "₹5,999";
+      document.getElementById("modal-amc-sysid").value = sysId;
+      openModal("requestAmcModal");
+    }
+
+    async function handleCustomerSubmitAMC(e) {
+      e.preventDefault();
+      try {
+        const payload = {
+          planName: document.getElementById("modal-amc-plan").value,
+          systemId: document.getElementById("modal-amc-sysid").value,
+          notes: document.getElementById("modal-amc-notes").value
+        };
+        const res = await api("/api/amc/request", "POST", payload);
+        showToast(res.message, "success");
+        closeModal("requestAmcModal");
+        loadCustomerAMC();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    function openServiceModal(sysId = "") {
+      if (sysId) document.getElementById("modal-srv-sysid").value = sysId;
+      openModal("bookServiceModal");
+    }
+
+    async function handleCustomerSubmitService(e) {
+      e.preventDefault();
+      try {
+        const payload = {
+          serviceType: document.getElementById("modal-srv-type").value,
+          systemId: document.getElementById("modal-srv-sysid").value,
+          city: document.getElementById("modal-srv-city").value,
+          preferredDate: document.getElementById("modal-srv-date").value,
+          description: document.getElementById("modal-srv-desc").value
+        };
+        const res = await api("/api/services/book", "POST", payload);
+        showToast(res.message, "success");
+        closeModal("bookServiceModal");
+        loadCustomerServices();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    function openSubmitQuoteModal(leadId, capacity) {
+      document.getElementById("modal-quote-leadid").value = leadId;
+      document.getElementById("modal-quote-capacity").value = capacity;
+      openModal("submitQuoteModal");
+    }
+
+    async function handleVendorSubmitQuote(e) {
+      e.preventDefault();
+      try {
+        const payload = {
+          leadId: document.getElementById("modal-quote-leadid").value,
+          systemCapacity: document.getElementById("modal-quote-capacity").value,
+          panelDetails: document.getElementById("modal-quote-panels").value,
+          inverterDetails: document.getElementById("modal-quote-inverter").value,
+          totalPrice: document.getElementById("modal-quote-price").value,
+          warrantyTerms: document.getElementById("modal-quote-warranty").value,
+          estimatedDays: document.getElementById("modal-quote-days").value
+        };
+        const res = await api("/api/quotes", "POST", payload);
+        showToast(res.message, "success");
+        closeModal("submitQuoteModal");
+        loadVendorLeads();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    function openAssignVendorModal(leadId) {
+      document.getElementById("modal-assign-leadid").value = leadId;
+      const select = document.getElementById("modal-assign-vendor-select");
+      select.innerHTML = (window._allVendors || []).map(v => `
+        <option value="${v.id || v._id}">${v.companyName || v.name} (${v.email})</option>
+      `).join("");
+      openModal("assignVendorModal");
+    }
+
+    async function handleAdminAssignVendor(e) {
+      e.preventDefault();
+      const leadId = document.getElementById("modal-assign-leadid").value;
+      const vendorId = document.getElementById("modal-assign-vendor-select").value;
+      try {
+        const res = await api(`/api/leads/${leadId}/assign`, "PATCH", { vendorId });
+        showToast(res.message, "success");
+        closeModal("assignVendorModal");
+        loadAdminLeads();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    function openCreateSolarFileModal() { openModal("createSolarFileModal"); }
+    async function handleAdminCreateSolarFile(e) {
+      e.preventDefault();
+      try {
+        const payload = {
+          customerEmail: document.getElementById("modal-file-email").value,
+          customerName: document.getElementById("modal-file-name").value,
+          customerPhone: document.getElementById("modal-file-phone").value,
+          city: document.getElementById("modal-file-city").value,
+          capacityKw: document.getElementById("modal-file-kw").value,
+          panelBrand: document.getElementById("modal-file-panel").value,
+          inverterBrand: document.getElementById("modal-file-inv").value,
+          warrantyYears: document.getElementById("modal-file-warranty").value
+        };
+        const res = await api("/api/systems", "POST", payload);
+        showToast(res.message, "success");
+        closeModal("createSolarFileModal");
+        loadAdminSystems();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    function openActivateAmcModal(contractId) {
+      document.getElementById("modal-actamc-id").value = contractId;
+      openModal("activateAmcModal");
+    }
+
+    async function handleAdminActivateAMC(e) {
+      e.preventDefault();
+      const id = document.getElementById("modal-actamc-id").value;
+      try {
+        const payload = {
+          durationMonths: document.getElementById("modal-actamc-months").value,
+          vendorPayout: document.getElementById("modal-actamc-payout").value
+        };
+        const res = await api(`/api/amc/${id}/activate`, "PATCH", payload);
+        showToast(res.message, "success");
+        closeModal("activateAmcModal");
+        loadAdminAMC();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+  </script>
+</body>
+</html>
