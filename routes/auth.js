@@ -43,8 +43,36 @@ router.post("/register", async (req, res, next) => {
       : [];
 
     const passwordHash = await bcrypt.hash(password, 12);
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
+    if (engine === "supabase") {
+      const existing = await storage.supabaseDb.findUserByEmail(normalizedEmail);
+      if (existing) {
+        return res.status(409).json({ error: "This email is already registered." });
+      }
+
+      const user = await storage.supabaseDb.createUser({
+        name: String(name).trim(),
+        email: normalizedEmail,
+        phone: String(phone).trim().slice(0, 20),
+        passwordHash,
+        role,
+        companyName: role === "vendor" ? String(companyName).trim().slice(0, 160) : "",
+        serviceAreas: areasArray,
+        serviceTypes: typesArray,
+        vendorVerified: false
+      });
+
+      req.session.userId = user.id;
+      req.session.role = user.role;
+
+      return res.status(201).json({
+        message: role === "vendor"
+          ? "Vendor account created! Work orders will be accessible once verified by SVN Solar Admin."
+          : "Customer account created successfully!",
+        user: storage.safeUser(user)
+      });
+    } else if (engine === "mongodb") {
       const existing = await User.findOne({ email: normalizedEmail });
       if (existing) {
         return res.status(409).json({ error: "This email is already registered." });
@@ -72,7 +100,7 @@ router.post("/register", async (req, res, next) => {
         user: storage.safeUser(user)
       });
     } else {
-      // Fallback store
+      // Fallback local store
       const existing = storage.fallbackStore.users.find(u => u.email === normalizedEmail);
       if (existing) {
         return res.status(409).json({ error: "This email is already registered." });
@@ -119,53 +147,37 @@ router.post("/login", async (req, res, next) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
+    const engine = storage.getEngine();
+    let user = null;
 
-    if (storage.getMongoStatus()) {
-      const user = await User.findOne({ email: normalizedEmail }).select("+passwordHash");
-      if (!user || !user.isActive) {
-        return res.status(401).json({ error: "Invalid email or password." });
-      }
-
-      const ok = await bcrypt.compare(String(password), user.passwordHash);
-      if (!ok) {
-        return res.status(401).json({ error: "Invalid email or password." });
-      }
-
-      await new Promise((resolve, reject) =>
-        req.session.regenerate(err => (err ? reject(err) : resolve()))
-      );
-
-      req.session.userId = user._id.toString();
-      req.session.role = user.role;
-
-      return res.json({
-        message: "Login successful!",
-        user: storage.safeUser(user)
-      });
+    if (engine === "supabase") {
+      user = await storage.supabaseDb.findUserByEmail(normalizedEmail);
+    } else if (engine === "mongodb") {
+      user = await User.findOne({ email: normalizedEmail }).select("+passwordHash");
     } else {
-      // Fallback store
-      const user = storage.fallbackStore.users.find(u => u.email === normalizedEmail);
-      if (!user || user.isActive === false) {
-        return res.status(401).json({ error: "Invalid email or password." });
-      }
-
-      const ok = await bcrypt.compare(String(password), user.passwordHash);
-      if (!ok) {
-        return res.status(401).json({ error: "Invalid email or password." });
-      }
-
-      await new Promise((resolve, reject) =>
-        req.session.regenerate(err => (err ? reject(err) : resolve()))
-      );
-
-      req.session.userId = user._id;
-      req.session.role = user.role;
-
-      return res.json({
-        message: "Login successful!",
-        user: storage.safeUser(user)
-      });
+      user = storage.fallbackStore.users.find(u => u.email === normalizedEmail);
     }
+
+    if (!user || user.isActive === false) {
+      return res.status(401).json({ error: "Invalid email or password." });
+    }
+
+    const ok = await bcrypt.compare(String(password), user.passwordHash);
+    if (!ok) {
+      return res.status(401).json({ error: "Invalid email or password." });
+    }
+
+    await new Promise((resolve, reject) =>
+      req.session.regenerate(err => (err ? reject(err) : resolve()))
+    );
+
+    req.session.userId = user.id || user._id.toString();
+    req.session.role = user.role;
+
+    return res.json({
+      message: "Login successful!",
+      user: storage.safeUser(user)
+    });
   } catch (err) {
     next(err);
   }
@@ -177,21 +189,23 @@ router.get("/me", async (req, res, next) => {
       return res.status(401).json({ error: "Not logged in." });
     }
 
-    if (storage.getMongoStatus()) {
-      const user = await User.findById(req.session.userId);
-      if (!user || !user.isActive) {
-        req.session.destroy(() => {});
-        return res.status(401).json({ error: "Session expired or user inactive." });
-      }
-      return res.json({ user: storage.safeUser(user) });
+    const engine = storage.getEngine();
+    let user = null;
+
+    if (engine === "supabase") {
+      user = await storage.supabaseDb.findUserById(req.session.userId);
+    } else if (engine === "mongodb") {
+      user = await User.findById(req.session.userId);
     } else {
-      const user = storage.fallbackStore.users.find(u => u._id === req.session.userId);
-      if (!user || user.isActive === false) {
-        req.session.destroy(() => {});
-        return res.status(401).json({ error: "Session expired or user inactive." });
-      }
-      return res.json({ user: storage.safeUser(user) });
+      user = storage.fallbackStore.users.find(u => u._id === req.session.userId);
     }
+
+    if (!user || user.isActive === false) {
+      req.session.destroy(() => {});
+      return res.status(401).json({ error: "Session expired or user inactive." });
+    }
+
+    return res.json({ user: storage.safeUser(user) });
   } catch (err) {
     next(err);
   }

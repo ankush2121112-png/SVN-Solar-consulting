@@ -7,7 +7,10 @@ const router = express.Router();
 
 async function getCurrentUser(req) {
   if (!req.session.userId) return null;
-  if (storage.getMongoStatus()) {
+  const engine = storage.getEngine();
+  if (engine === "supabase") {
+    return await storage.supabaseDb.findUserById(req.session.userId);
+  } else if (engine === "mongodb") {
     return await User.findById(req.session.userId);
   } else {
     return storage.fallbackStore.users.find(u => u._id === req.session.userId) || null;
@@ -40,8 +43,23 @@ router.post("/book", async (req, res, next) => {
     }
 
     const ticketId = "SVN-SR-" + Math.floor(100 + Math.random() * 900);
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
+    if (engine === "supabase") {
+      const ticket = await storage.supabaseDb.createServiceTicket({
+        ticketId,
+        customer: user ? (user.id || user._id) : null,
+        customerName: String(name).trim(),
+        customerPhone: String(phone).trim(),
+        customerEmail: String(email).trim().toLowerCase(),
+        systemId: String(systemId).trim(),
+        city: String(city).trim(),
+        serviceType,
+        description: String(description).trim().slice(0, 1000),
+        preferredDate: String(preferredDate).trim()
+      });
+      return res.status(201).json({ message: "Service request registered successfully!", ticket });
+    } else if (engine === "mongodb") {
       const ticket = await ServiceTicket.create({
         ticketId,
         customer: user ? user._id : null,
@@ -55,11 +73,7 @@ router.post("/book", async (req, res, next) => {
         preferredDate: String(preferredDate).trim(),
         status: "Booked"
       });
-
-      return res.status(201).json({
-        message: "Service request registered successfully!",
-        ticket
-      });
+      return res.status(201).json({ message: "Service request registered successfully!", ticket });
     } else {
       const newTicket = {
         _id: "sr_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
@@ -79,14 +93,9 @@ router.post("/book", async (req, res, next) => {
         completedAt: null,
         createdAt: new Date().toISOString()
       };
-
       storage.fallbackStore.services.unshift(newTicket);
       storage.persistFallbackStore();
-
-      return res.status(201).json({
-        message: "Service request registered successfully!",
-        ticket: newTicket
-      });
+      return res.status(201).json({ message: "Service request registered successfully!", ticket: newTicket });
     }
   } catch (err) {
     next(err);
@@ -101,7 +110,18 @@ router.get("/mine", async (req, res, next) => {
       return res.status(401).json({ error: "Please log in to view service requests." });
     }
 
-    if (storage.getMongoStatus()) {
+    const engine = storage.getEngine();
+
+    if (engine === "supabase") {
+      let filter = {};
+      if (user.role === "vendor") {
+        filter = { assignedVendorId: user.id || user._id };
+      } else if (user.role === "customer") {
+        filter = { customerId: user.id || user._id, customerEmail: user.email };
+      }
+      const tickets = await storage.supabaseDb.getServiceTickets(filter);
+      return res.json({ tickets });
+    } else if (engine === "mongodb") {
       let tickets = [];
       if (user.role === "admin") {
         tickets = await ServiceTicket.find()
@@ -155,7 +175,19 @@ router.patch("/:id/assign", async (req, res, next) => {
     const { vendorId } = req.body;
     if (!vendorId) return res.status(400).json({ error: "Vendor ID is required." });
 
-    if (storage.getMongoStatus()) {
+    const engine = storage.getEngine();
+
+    if (engine === "supabase") {
+      const vendor = await storage.supabaseDb.findUserById(vendorId);
+      if (!vendor || vendor.role !== "vendor" || !vendor.vendorVerified) {
+        return res.status(400).json({ error: "Verified vendor not found." });
+      }
+      const ticket = await storage.supabaseDb.updateServiceTicket(req.params.id, {
+        assignedVendor: vendor.id || vendor._id,
+        status: "Assigned to Vendor"
+      });
+      return res.json({ message: "Vendor assigned to service ticket!", ticket });
+    } else if (engine === "mongodb") {
       const vendor = await User.findOne({ _id: vendorId, role: "vendor", vendorVerified: true });
       if (!vendor) return res.status(400).json({ error: "Verified vendor not found." });
 
@@ -211,15 +243,23 @@ router.patch("/:id/status", async (req, res, next) => {
       return res.status(400).json({ error: "Invalid status." });
     }
 
-    const completedAt = status === "Completed" ? new Date() : null;
+    const completedAt = status === "Completed" ? new Date().toISOString() : null;
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
+    if (engine === "supabase") {
+      const ticket = await storage.supabaseDb.updateServiceTicket(req.params.id, {
+        status,
+        technicianNotes,
+        completedAt
+      });
+      return res.json({ message: "Service status updated successfully!", ticket });
+    } else if (engine === "mongodb") {
       const query = { _id: req.params.id };
       if (user.role === "vendor") query.assignedVendor = user._id;
 
       const updateData = { status };
       if (technicianNotes !== undefined) updateData.technicianNotes = technicianNotes;
-      if (completedAt) updateData.completedAt = completedAt;
+      if (completedAt) updateData.completedAt = new Date(completedAt);
 
       const ticket = await ServiceTicket.findOneAndUpdate(query, updateData, { new: true });
       if (!ticket) return res.status(404).json({ error: "Ticket not found or unauthorized." });
@@ -237,7 +277,7 @@ router.patch("/:id/status", async (req, res, next) => {
 
       ticket.status = status;
       if (technicianNotes !== undefined) ticket.technicianNotes = technicianNotes;
-      if (completedAt) ticket.completedAt = completedAt.toISOString();
+      if (completedAt) ticket.completedAt = completedAt;
       storage.persistFallbackStore();
 
       return res.json({ message: "Service status updated successfully!", ticket });

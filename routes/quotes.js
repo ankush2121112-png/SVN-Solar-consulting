@@ -8,7 +8,10 @@ const router = express.Router();
 
 async function getCurrentUser(req) {
   if (!req.session.userId) return null;
-  if (storage.getMongoStatus()) {
+  const engine = storage.getEngine();
+  if (engine === "supabase") {
+    return await storage.supabaseDb.findUserById(req.session.userId);
+  } else if (engine === "mongodb") {
     return await User.findById(req.session.userId);
   } else {
     return storage.fallbackStore.users.find(u => u._id === req.session.userId) || null;
@@ -46,8 +49,27 @@ router.post("/", async (req, res, next) => {
     }
 
     const quoteId = "SVN-QT-" + Math.floor(100 + Math.random() * 900);
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
+    if (engine === "supabase") {
+      const quote = await storage.supabaseDb.createQuotation({
+        quoteId,
+        leadId,
+        vendor: user.id || user._id,
+        vendorName: user.name,
+        vendorCompanyName: user.companyName || user.name,
+        vendorPhone: user.phone || "",
+        systemCapacity,
+        panelDetails,
+        inverterDetails,
+        totalPrice: Number(totalPrice),
+        warrantyTerms,
+        estimatedDays: Number(estimatedDays),
+        notes
+      });
+      await storage.supabaseDb.updateLead(leadId, { status: "Quotation Received" });
+      return res.status(201).json({ message: "Quotation submitted successfully!", quote });
+    } else if (engine === "mongodb") {
       const quote = await Quotation.create({
         quoteId,
         leadId,
@@ -65,12 +87,10 @@ router.post("/", async (req, res, next) => {
         status: "Submitted"
       });
 
-      // Update lead status to "Quotation Received"
       await Lead.findOneAndUpdate(
         { $or: [{ _id: leadId }, { leadNumber: leadId }] },
         { status: "Quotation Received" }
       );
-
       return res.status(201).json({ message: "Quotation submitted successfully!", quote });
     } else {
       const newQuote = {
@@ -93,14 +113,12 @@ router.post("/", async (req, res, next) => {
       };
 
       storage.fallbackStore.quotes.unshift(newQuote);
-
       const targetLead = storage.fallbackStore.leads.find(
         l => l._id === leadId || l.leadNumber === leadId
       );
       if (targetLead) targetLead.status = "Quotation Received";
 
       storage.persistFallbackStore();
-
       return res.status(201).json({ message: "Quotation submitted successfully!", quote: newQuote });
     }
   } catch (err) {
@@ -108,12 +126,16 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-// Get quotes for a specific lead (for Customer Quotation Comparison)
+// Get quotes for a specific lead
 router.get("/lead/:leadId", async (req, res, next) => {
   try {
     const { leadId } = req.params;
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
+    if (engine === "supabase") {
+      const quotes = await storage.supabaseDb.getQuotationsByLead(leadId);
+      return res.json({ quotes });
+    } else if (engine === "mongodb") {
       const quotes = await Quotation.find({ leadId }).sort({ totalPrice: 1 });
       return res.json({ quotes });
     } else {
@@ -131,8 +153,20 @@ router.patch("/:id/accept", async (req, res, next) => {
   try {
     const user = await getCurrentUser(req);
     if (!user) return res.status(401).json({ error: "Please log in." });
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
+    if (engine === "supabase") {
+      const quote = await storage.supabaseDb.updateQuotation(req.params.id, {
+        status: "Accepted by Customer"
+      });
+      if (!quote) return res.status(404).json({ error: "Quote not found." });
+
+      await storage.supabaseDb.updateLead(quote.leadId, {
+        assignedVendor: quote.vendor,
+        status: "Installation"
+      });
+      return res.json({ message: "Quotation accepted! Next step: Installation schedule.", quote });
+    } else if (engine === "mongodb") {
       const quote = await Quotation.findByIdAndUpdate(
         req.params.id,
         { status: "Accepted by Customer" },
@@ -144,7 +178,6 @@ router.patch("/:id/accept", async (req, res, next) => {
         { $or: [{ _id: quote.leadId }, { leadNumber: quote.leadId }] },
         { assignedVendor: quote.vendor, status: "Installation" }
       );
-
       return res.json({ message: "Quotation accepted! Next step: Installation schedule.", quote });
     } else {
       const quote = storage.fallbackStore.quotes.find(
@@ -153,7 +186,6 @@ router.patch("/:id/accept", async (req, res, next) => {
       if (!quote) return res.status(404).json({ error: "Quote not found." });
 
       quote.status = "Accepted by Customer";
-
       const targetLead = storage.fallbackStore.leads.find(
         l => l._id === quote.leadId || l.leadNumber === quote.leadId
       );
@@ -161,7 +193,6 @@ router.patch("/:id/accept", async (req, res, next) => {
         targetLead.assignedVendor = quote.vendor;
         targetLead.status = "Installation";
       }
-
       storage.persistFallbackStore();
 
       return res.json({ message: "Quotation accepted! Next step: Installation schedule.", quote });

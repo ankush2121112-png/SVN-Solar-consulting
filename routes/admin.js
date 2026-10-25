@@ -10,12 +10,17 @@ const router = express.Router();
 
 async function requireAdmin(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: "Please log in." });
+  const engine = storage.getEngine();
   let user;
-  if (storage.getMongoStatus()) {
+
+  if (engine === "supabase") {
+    user = await storage.supabaseDb.findUserById(req.session.userId);
+  } else if (engine === "mongodb") {
     user = await User.findById(req.session.userId);
   } else {
     user = storage.fallbackStore.users.find(u => u._id === req.session.userId);
   }
+
   if (!user || user.role !== "admin") {
     return res.status(403).json({ error: "Admin access required." });
   }
@@ -26,7 +31,12 @@ async function requireAdmin(req, res, next) {
 // Admin stats
 router.get("/stats", requireAdmin, async (_req, res, next) => {
   try {
-    if (storage.getMongoStatus()) {
+    const engine = storage.getEngine();
+
+    if (engine === "supabase") {
+      const stats = await storage.supabaseDb.getAdminStats();
+      return res.json(stats);
+    } else if (engine === "mongodb") {
       const [leadsCount, systemsCount, amcActiveCount, servicesOpenCount, vendorsCount] =
         await Promise.all([
           Lead.countDocuments(),
@@ -36,7 +46,6 @@ router.get("/stats", requireAdmin, async (_req, res, next) => {
           User.countDocuments({ role: "vendor" })
         ]);
 
-      // Calculate approximate revenue pipeline
       const contracts = await AMCContract.find({ status: "Active" });
       const totalAmcRevenue = contracts.reduce((sum, c) => sum + (c.annualPrice || 0), 0);
 
@@ -77,7 +86,12 @@ router.get("/stats", requireAdmin, async (_req, res, next) => {
 // List all vendors
 router.get("/vendors", requireAdmin, async (_req, res, next) => {
   try {
-    if (storage.getMongoStatus()) {
+    const engine = storage.getEngine();
+
+    if (engine === "supabase") {
+      const vendors = await storage.supabaseDb.getVendors();
+      return res.json({ vendors: vendors.map(v => storage.safeUser(v)) });
+    } else if (engine === "mongodb") {
       const vendors = await User.find({ role: "vendor" }).sort({ createdAt: -1 });
       return res.json({ vendors: vendors.map(v => storage.safeUser(v)) });
     } else {
@@ -94,8 +108,17 @@ router.patch("/vendors/:id/verify", requireAdmin, async (req, res, next) => {
   try {
     const { verified } = req.body;
     const isVerified = verified === undefined ? true : Boolean(verified);
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
+    if (engine === "supabase") {
+      const vendor = await storage.supabaseDb.updateUser(req.params.id, {
+        vendorVerified: isVerified
+      });
+      return res.json({
+        message: isVerified ? "Vendor verified successfully!" : "Vendor unverified.",
+        vendor: storage.safeUser(vendor)
+      });
+    } else if (engine === "mongodb") {
       const vendor = await User.findByIdAndUpdate(
         req.params.id,
         { vendorVerified: isVerified },

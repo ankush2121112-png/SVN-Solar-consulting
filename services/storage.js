@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
 const User = require("../models/User");
@@ -9,11 +8,13 @@ const SolarSystem = require("../models/SolarSystem");
 const AMCContract = require("../models/AMCContract");
 const ServiceTicket = require("../models/ServiceTicket");
 const Quotation = require("../models/Quotation");
+const { initSupabase, isSupabaseConfigured, db: supabaseDb } = require("./supabase");
 
 const DATA_DIR = path.join(__dirname, "../data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
 let isMongoActive = false;
+let activeEngine = "local"; // "supabase", "mongodb", or "local"
 
 // In-memory / file fallback store
 const fallbackStore = {
@@ -55,10 +56,19 @@ function persistFallbackStore() {
 
 function setMongoStatus(status) {
   isMongoActive = status;
+  if (status) activeEngine = "mongodb";
 }
 
 function getMongoStatus() {
   return isMongoActive;
+}
+
+function setEngine(engine) {
+  activeEngine = engine;
+}
+
+function getEngine() {
+  return activeEngine;
 }
 
 // Generate random short ID for fallback mode
@@ -66,14 +76,20 @@ function genId(prefix) {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
-// Ensure default Admin exists in both Mongo and fallback store
+// Ensure default Admin exists across Supabase, Mongo or Fallback store
 async function seedDefaultAdmin(adminName, adminEmail, adminPassword) {
   const email = (adminEmail || "admin@svnsolar.local").trim().toLowerCase();
   const password = adminPassword || "SVNAdmin#2026!";
   const name = adminName || "SVN Solar Admin";
+
+  if (activeEngine === "supabase") {
+    await supabaseDb.seedAdminAndVendors(name, email, password);
+    return;
+  }
+
   const passwordHash = await bcrypt.hash(password, 12);
 
-  if (isMongoActive) {
+  if (activeEngine === "mongodb" && isMongoActive) {
     const existing = await User.findOne({ email });
     if (!existing) {
       await User.create({
@@ -114,17 +130,18 @@ async function seedDefaultAdmin(adminName, adminEmail, adminPassword) {
 
 // Safe user object for API responses
 function safeUser(u) {
+  if (!u) return null;
   return {
     id: u._id || u.id,
     name: u.name,
     email: u.email,
-    phone: u.phone,
+    phone: u.phone || "",
     role: u.role,
-    companyName: u.companyName || "",
-    serviceAreas: u.serviceAreas || [],
-    serviceTypes: u.serviceTypes || [],
-    vendorVerified: !!u.vendorVerified,
-    isActive: u.isActive !== false
+    companyName: u.companyName || u.company_name || "",
+    serviceAreas: u.serviceAreas || u.service_areas || [],
+    serviceTypes: u.serviceTypes || u.service_types || [],
+    vendorVerified: !!(u.vendorVerified || u.vendor_verified),
+    isActive: u.isActive !== false && u.is_active !== false
   };
 }
 
@@ -134,9 +151,13 @@ module.exports = {
   fallbackStore,
   setMongoStatus,
   getMongoStatus,
+  setEngine,
+  getEngine,
   seedDefaultAdmin,
   safeUser,
   genId,
+  initSupabase,
+  supabaseDb,
   models: {
     User,
     Lead,

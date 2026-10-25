@@ -2,7 +2,6 @@ const express = require("express");
 const storage = require("../services/storage");
 const AMCContract = storage.models.AMCContract;
 const User = storage.models.User;
-const SolarSystem = storage.models.SolarSystem;
 
 const router = express.Router();
 
@@ -55,7 +54,10 @@ const AMC_PLANS = [
 
 async function getCurrentUser(req) {
   if (!req.session.userId) return null;
-  if (storage.getMongoStatus()) {
+  const engine = storage.getEngine();
+  if (engine === "supabase") {
+    return await storage.supabaseDb.findUserById(req.session.userId);
+  } else if (engine === "mongodb") {
     return await User.findById(req.session.userId);
   } else {
     return storage.fallbackStore.users.find(u => u._id === req.session.userId) || null;
@@ -96,8 +98,26 @@ router.post("/request", async (req, res, next) => {
     const annualPrice = matchedPlan ? matchedPlan.price : 5999;
     const visitsQuota = matchedPlan ? matchedPlan.visits : 4;
     const contractId = "SVN-AMC-" + Math.floor(100 + Math.random() * 900);
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
+    if (engine === "supabase") {
+      const contract = await storage.supabaseDb.createAMCContract({
+        contractId,
+        customer: user ? (user.id || user._id) : null,
+        customerEmail: String(email).trim().toLowerCase(),
+        customerName: String(name).trim(),
+        customerPhone: String(phone).trim(),
+        systemId: String(systemId).trim(),
+        planName: matchedPlan ? matchedPlan.name : planName,
+        annualPrice,
+        totalVisitsQuota: visitsQuota,
+        notes
+      });
+      return res.status(201).json({
+        message: "AMC request registered! SVN Solar Admin will verify and activate your coverage.",
+        contract
+      });
+    } else if (engine === "mongodb") {
       const contract = await AMCContract.create({
         contractId,
         customer: user ? user._id : null,
@@ -112,7 +132,6 @@ router.post("/request", async (req, res, next) => {
         completedVisits: 0,
         notes
       });
-
       return res.status(201).json({
         message: "AMC request registered! SVN Solar Admin will verify and activate your coverage.",
         contract
@@ -139,10 +158,8 @@ router.post("/request", async (req, res, next) => {
         notes,
         createdAt: new Date().toISOString()
       };
-
       storage.fallbackStore.contracts.unshift(newContract);
       storage.persistFallbackStore();
-
       return res.status(201).json({
         message: "AMC request registered! SVN Solar Admin will verify and activate your coverage.",
         contract: newContract
@@ -153,7 +170,7 @@ router.post("/request", async (req, res, next) => {
   }
 });
 
-// View AMC contracts (Customer or Admin)
+// View AMC contracts
 router.get("/mine", async (req, res, next) => {
   try {
     const user = await getCurrentUser(req);
@@ -161,7 +178,16 @@ router.get("/mine", async (req, res, next) => {
       return res.status(401).json({ error: "Please log in to view AMC contracts." });
     }
 
-    if (storage.getMongoStatus()) {
+    const engine = storage.getEngine();
+
+    if (engine === "supabase") {
+      let filter = {};
+      if (user.role !== "admin") {
+        filter = { customerId: user.id || user._id, customerEmail: user.email };
+      }
+      const contracts = await storage.supabaseDb.getAMCContracts(filter);
+      return res.json({ contracts });
+    } else if (engine === "mongodb") {
       let contracts = [];
       if (user.role === "admin") {
         contracts = await AMCContract.find()
@@ -212,8 +238,19 @@ router.patch("/:id/activate", async (req, res, next) => {
     const startDate = new Date();
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + Number(durationMonths));
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
+    if (engine === "supabase") {
+      const contract = await storage.supabaseDb.updateAMCContract(req.params.id, {
+        status: "Active",
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        assignedVendor: vendorId || null,
+        vendorPayout: Number(vendorPayout),
+        paymentStatus: "Paid"
+      });
+      return res.json({ message: "AMC Contract activated successfully!", contract });
+    } else if (engine === "mongodb") {
       const contract = await AMCContract.findByIdAndUpdate(
         req.params.id,
         {

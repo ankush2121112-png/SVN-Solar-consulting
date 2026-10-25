@@ -42,32 +42,51 @@ const authLimiter = rateLimit({
   message: { error: "Too many authentication attempts, please try again in a few minutes." }
 });
 
-// Configure session middleware
 async function setupApp() {
   storage.ensureDataDir();
 
   let sessionStore = null;
 
-  // Attempt MongoDB connection
-  const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/svn_solar";
-  try {
-    console.log(`Connecting to MongoDB at: ${mongoUri}...`);
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 3000 });
-    storage.setMongoStatus(true);
-    console.log("MongoDB connected successfully!");
+  // 1. Check for Supabase configuration first (Recommended for Render)
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
-    sessionStore = MongoStore.create({
-      mongoUrl: mongoUri,
-      collectionName: "sessions",
-      ttl: 60 * 60 * 24
-    });
-  } catch (err) {
-    storage.setMongoStatus(false);
-    console.warn("\n========================================================");
-    console.warn("MongoDB is not active or unreachable locally.");
-    console.warn("Running in RESILIENT FILE-STORAGE MODE (data/db.json).");
-    console.warn("All features (Auth, Leads, Systems, AMC, Services) are fully functional!");
-    console.warn("========================================================\n");
+  if (supabaseUrl && supabaseKey) {
+    storage.initSupabase(supabaseUrl, supabaseKey);
+    storage.setEngine("supabase");
+    console.log(`\n========================================================`);
+    console.log(`Connected to Supabase PostgreSQL at: ${supabaseUrl}`);
+    console.log(`Database Engine: SUPABASE (Cloud PostgreSQL)`);
+    console.log(`========================================================\n`);
+  } else {
+    // 2. Attempt MongoDB if Supabase is not configured
+    const mongoUri = process.env.MONGODB_URI;
+    if (mongoUri && mongoUri.startsWith("mongodb")) {
+      try {
+        console.log(`Connecting to MongoDB at: ${mongoUri}...`);
+        await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 3000 });
+        storage.setMongoStatus(true);
+        storage.setEngine("mongodb");
+        console.log("MongoDB connected successfully!");
+
+        sessionStore = MongoStore.create({
+          mongoUrl: mongoUri,
+          collectionName: "sessions",
+          ttl: 60 * 60 * 24
+        });
+      } catch (err) {
+        storage.setMongoStatus(false);
+        storage.setEngine("local");
+        console.warn("\n========================================================");
+        console.warn("MongoDB is not active or unreachable locally.");
+        console.warn("Running in RESILIENT FILE-STORAGE MODE (data/db.json).");
+        console.warn("All features (Auth, Leads, Systems, AMC, Services) are fully functional!");
+        console.warn("========================================================\n");
+      }
+    } else {
+      storage.setEngine("local");
+      console.log("No cloud database specified. Running with local persistent storage.");
+    }
   }
 
   app.use(
@@ -76,7 +95,7 @@ async function setupApp() {
       secret: SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
-      store: sessionStore || undefined, // Fallbacks to in-memory store if MongoStore not active
+      store: sessionStore || undefined,
       cookie: {
         httpOnly: true,
         sameSite: "lax",
@@ -100,10 +119,16 @@ async function setupApp() {
 
   // Health and Status API
   app.get("/api/health", (_req, res) => {
+    const engine = storage.getEngine();
+    let dbLabel = "Local Persistent Store";
+    if (engine === "supabase") dbLabel = "Supabase (Cloud PostgreSQL)";
+    else if (engine === "mongodb") dbLabel = "MongoDB Connected";
+
     res.json({
       status: "operational",
       service: "SVN Solar Consulting Platform API",
-      database: storage.getMongoStatus() ? "MongoDB Connected" : "Local Persistent Store",
+      database: dbLabel,
+      engine: engine,
       timestamp: new Date().toISOString()
     });
   });
@@ -111,8 +136,8 @@ async function setupApp() {
   // Global Error Handler
   app.use((err, _req, res, _next) => {
     console.error("Server Error:", err);
-    if (err.code === 11000) {
-      return res.status(409).json({ error: "A record with this unique value already exists." });
+    if (err.code === "23505" || err.code === 11000) {
+      return res.status(409).json({ error: "A record with this unique value (e.g. email) already exists." });
     }
     res.status(500).json({ error: err.message || "Internal server error. Please try again later." });
   });
@@ -123,14 +148,15 @@ async function setupApp() {
     process.env.ADMIN_EMAIL,
     process.env.ADMIN_PASSWORD
   );
-  await seedDemoData();
+  await seedLocalDemoData();
 }
 
-async function seedDemoData() {
+async function seedLocalDemoData() {
+  if (storage.getEngine() !== "local") return;
+
   const bcrypt = require("bcryptjs");
   const defaultPw = await bcrypt.hash("SolarVendor#123", 10);
 
-  // Sample verified vendors if none exist
   const vendors = [
     {
       name: "Rewa Solar Tech Solutions",
@@ -152,106 +178,42 @@ async function seedDemoData() {
     }
   ];
 
-  if (storage.getMongoStatus()) {
-    const User = storage.models.User;
-    for (const v of vendors) {
-      const exists = await User.findOne({ email: v.email });
-      if (!exists) {
-        await User.create({
-          ...v,
-          passwordHash: defaultPw,
-          role: "vendor",
-          isActive: true
-        });
-        console.log(`[MongoDB] Demo Vendor created: ${v.email}`);
-      }
-    }
-  } else {
-    for (const v of vendors) {
-      const exists = storage.fallbackStore.users.find(u => u.email === v.email);
-      if (!exists) {
-        storage.fallbackStore.users.push({
-          _id: "vnd_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
-          ...v,
-          passwordHash: defaultPw,
-          role: "vendor",
-          isActive: true,
-          createdAt: new Date().toISOString()
-        });
-      }
-    }
-
-    // Seed sample showcase lead & system if empty
-    if (storage.fallbackStore.leads.length === 0) {
-      storage.fallbackStore.leads.push({
-        _id: "ld_demo_1",
-        leadNumber: "SVN-LD-1001",
-        customerName: "Vikash Sharma",
-        customerPhone: "+91 98930 12345",
-        customerEmail: "vikash.sharma@example.com",
-        city: "Satna",
-        projectType: "Residential Rooftop",
-        monthlyBill: "₹3,500 - ₹5,000",
-        budget: "₹1.5 - 2.5 Lakhs",
-        spaceAvailable: "350 sq ft",
-        recommendedKw: "3.3 kW",
-        requirement: "Looking for On-Grid solar installation under PM Surya Ghar Muft Bijli Yojana with subsidy assistance.",
-        status: "Reviewed",
-        assignedVendor: null,
-        internalNotes: "Pre-qualified lead. Roof has shadow-free south orientation.",
+  for (const v of vendors) {
+    const exists = storage.fallbackStore.users.find(u => u.email === v.email);
+    if (!exists) {
+      storage.fallbackStore.users.push({
+        _id: "vnd_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+        ...v,
+        passwordHash: defaultPw,
+        role: "vendor",
+        isActive: true,
         createdAt: new Date().toISOString()
       });
     }
-
-    if (storage.fallbackStore.systems.length === 0) {
-      storage.fallbackStore.systems.push({
-        _id: "sys_demo_1",
-        systemId: "SVN-SYS-101",
-        customerEmail: "vikash.sharma@example.com",
-        customerName: "Vikash Sharma",
-        customerPhone: "+91 98930 12345",
-        city: "Satna",
-        capacityKw: 3.3,
-        systemType: "Residential Rooftop",
-        panelBrand: "Waaree 540W Mono PERC Bifacial",
-        panelQuantity: 6,
-        inverterBrand: "Growatt MIN 3300TL-X",
-        inverterCapacity: "3.3 kW",
-        installationDate: new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString(),
-        warrantyYears: 25,
-        inverterWarrantyYears: 5,
-        status: "Active",
-        notes: "Commissioned with DISCOM net-meter.",
-        createdAt: new Date().toISOString()
-      });
-    }
-
-    if (storage.fallbackStore.contracts.length === 0) {
-      const start = new Date(Date.now() - 30 * 24 * 3600 * 1000);
-      const end = new Date(Date.now() + 335 * 24 * 3600 * 1000);
-      storage.fallbackStore.contracts.push({
-        _id: "amc_demo_1",
-        contractId: "SVN-AMC-201",
-        customerEmail: "vikash.sharma@example.com",
-        customerName: "Vikash Sharma",
-        customerPhone: "+91 98930 12345",
-        systemId: "SVN-SYS-101",
-        planName: "Silver Standard",
-        annualPrice: 5999,
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
-        status: "Active",
-        totalVisitsQuota: 4,
-        completedVisits: 1,
-        vendorPayout: 4000,
-        paymentStatus: "Paid",
-        notes: "Quarterly panel wash and quarterly earthing diagnostics.",
-        createdAt: new Date().toISOString()
-      });
-    }
-
-    storage.persistFallbackStore();
   }
+
+  if (storage.fallbackStore.leads.length === 0) {
+    storage.fallbackStore.leads.push({
+      _id: "ld_demo_1",
+      leadNumber: "SVN-LD-1001",
+      customerName: "Vikash Sharma",
+      customerPhone: "+91 98930 12345",
+      customerEmail: "vikash.sharma@example.com",
+      city: "Satna",
+      projectType: "Residential Rooftop",
+      monthlyBill: "₹3,500 - ₹5,000",
+      budget: "₹1.5 - 2.5 Lakhs",
+      spaceAvailable: "350 sq ft",
+      recommendedKw: "3.3 kW",
+      requirement: "Looking for On-Grid solar installation under PM Surya Ghar Muft Bijli Yojana with subsidy assistance.",
+      status: "Reviewed",
+      assignedVendor: null,
+      internalNotes: "Pre-qualified lead. Roof has shadow-free south orientation.",
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  storage.persistFallbackStore();
 }
 
 setupApp()

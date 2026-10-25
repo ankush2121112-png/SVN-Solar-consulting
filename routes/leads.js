@@ -7,14 +7,17 @@ const router = express.Router();
 
 async function getCurrentUser(req) {
   if (!req.session.userId) return null;
-  if (storage.getMongoStatus()) {
+  const engine = storage.getEngine();
+  if (engine === "supabase") {
+    return await storage.supabaseDb.findUserById(req.session.userId);
+  } else if (engine === "mongodb") {
     return await User.findById(req.session.userId);
   } else {
     return storage.fallbackStore.users.find(u => u._id === req.session.userId) || null;
   }
 }
 
-// Submit a lead (from AI Assistant, Contact Form, or Customer Portal)
+// Submit a lead
 router.post("/", async (req, res, next) => {
   try {
     const user = await getCurrentUser(req);
@@ -40,8 +43,25 @@ router.post("/", async (req, res, next) => {
     }
 
     const leadNumber = "SVN-LD-" + Math.floor(1000 + Math.random() * 9000);
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
+    if (engine === "supabase") {
+      const lead = await storage.supabaseDb.createLead({
+        leadNumber,
+        customer: user ? (user.id || user._id) : null,
+        customerName: String(name).trim().slice(0, 100),
+        customerPhone: String(phone).trim().slice(0, 20),
+        customerEmail: String(email).trim().toLowerCase().slice(0, 160),
+        city: String(city).trim().slice(0, 100),
+        projectType,
+        monthlyBill: String(monthlyBill).slice(0, 60),
+        budget: String(budget).slice(0, 80),
+        spaceAvailable: String(spaceAvailable).slice(0, 80),
+        recommendedKw: String(recommendedKw).slice(0, 60),
+        requirement: String(requirement).slice(0, 1500)
+      });
+      return res.status(201).json({ message: "Solar requirement submitted successfully!", lead });
+    } else if (engine === "mongodb") {
       const lead = await Lead.create({
         leadNumber,
         customer: user ? user._id : null,
@@ -57,13 +77,8 @@ router.post("/", async (req, res, next) => {
         requirement: String(requirement).slice(0, 1500),
         status: "New"
       });
-
-      return res.status(201).json({
-        message: "Solar requirement submitted successfully!",
-        lead
-      });
+      return res.status(201).json({ message: "Solar requirement submitted successfully!", lead });
     } else {
-      // Fallback store
       const newLead = {
         _id: "ld_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
         leadNumber,
@@ -83,21 +98,16 @@ router.post("/", async (req, res, next) => {
         internalNotes: "",
         createdAt: new Date().toISOString()
       };
-
       storage.fallbackStore.leads.unshift(newLead);
       storage.persistFallbackStore();
-
-      return res.status(201).json({
-        message: "Solar requirement submitted successfully!",
-        lead: newLead
-      });
+      return res.status(201).json({ message: "Solar requirement submitted successfully!", lead: newLead });
     }
   } catch (err) {
     next(err);
   }
 });
 
-// Get leads for currently logged-in user
+// Get leads for logged-in user
 router.get("/mine", async (req, res, next) => {
   try {
     const user = await getCurrentUser(req);
@@ -105,7 +115,24 @@ router.get("/mine", async (req, res, next) => {
       return res.status(401).json({ error: "Please log in to view leads." });
     }
 
-    if (storage.getMongoStatus()) {
+    const engine = storage.getEngine();
+
+    if (engine === "supabase") {
+      let filter = {};
+      if (user.role === "customer") {
+        filter = { customerId: user.id || user._id, customerEmail: user.email };
+      } else if (user.role === "vendor") {
+        if (!user.vendorVerified) {
+          return res.json({
+            leads: [],
+            message: "Your vendor account is pending verification by SVN Solar Admin."
+          });
+        }
+        filter = { assignedVendorId: user.id || user._id };
+      }
+      const leads = await storage.supabaseDb.getLeads(filter);
+      return res.json({ leads });
+    } else if (engine === "mongodb") {
       let leads = [];
       if (user.role === "customer") {
         leads = await Lead.find({
@@ -120,7 +147,6 @@ router.get("/mine", async (req, res, next) => {
         }
         leads = await Lead.find({ assignedVendor: user._id }).sort({ createdAt: -1 });
       } else {
-        // Admin
         leads = await Lead.find()
           .populate("customer", "name email phone")
           .populate("assignedVendor", "name companyName email phone")
@@ -128,7 +154,6 @@ router.get("/mine", async (req, res, next) => {
       }
       return res.json({ leads });
     } else {
-      // Fallback
       let leads = [];
       if (user.role === "customer") {
         leads = storage.fallbackStore.leads.filter(
@@ -143,7 +168,6 @@ router.get("/mine", async (req, res, next) => {
         }
         leads = storage.fallbackStore.leads.filter(l => l.assignedVendor === user._id);
       } else {
-        // Admin: populate vendor details
         leads = storage.fallbackStore.leads.map(l => {
           const v = l.assignedVendor
             ? storage.fallbackStore.users.find(u => u._id === l.assignedVendor)
@@ -176,7 +200,19 @@ router.patch("/:id/assign", async (req, res, next) => {
       return res.status(400).json({ error: "Vendor ID is required." });
     }
 
-    if (storage.getMongoStatus()) {
+    const engine = storage.getEngine();
+
+    if (engine === "supabase") {
+      const vendor = await storage.supabaseDb.findUserById(vendorId);
+      if (!vendor || vendor.role !== "vendor" || !vendor.vendorVerified) {
+        return res.status(400).json({ error: "Verified active vendor not found." });
+      }
+      const lead = await storage.supabaseDb.updateLead(req.params.id, {
+        assignedVendor: vendor.id || vendor._id,
+        status: "Vendor Assigned"
+      });
+      return res.json({ message: "Vendor assigned successfully!", lead });
+    } else if (engine === "mongodb") {
       const vendor = await User.findOne({ _id: vendorId, role: "vendor", vendorVerified: true });
       if (!vendor) {
         return res.status(400).json({ error: "Verified active vendor not found." });
@@ -194,9 +230,7 @@ router.patch("/:id/assign", async (req, res, next) => {
       const vendor = storage.fallbackStore.users.find(
         u => u._id === vendorId && u.role === "vendor" && u.vendorVerified
       );
-      if (!vendor) {
-        return res.status(400).json({ error: "Verified active vendor not found." });
-      }
+      if (!vendor) return res.status(400).json({ error: "Verified active vendor not found." });
 
       const lead = storage.fallbackStore.leads.find(
         l => l._id === req.params.id || l.leadNumber === req.params.id
@@ -214,7 +248,7 @@ router.patch("/:id/assign", async (req, res, next) => {
   }
 });
 
-// Status update (Admin or Assigned Vendor)
+// Status update
 router.patch("/:id/status", async (req, res, next) => {
   try {
     const user = await getCurrentUser(req);
@@ -238,11 +272,17 @@ router.patch("/:id/status", async (req, res, next) => {
       return res.status(400).json({ error: "Invalid status value." });
     }
 
-    if (storage.getMongoStatus()) {
+    const engine = storage.getEngine();
+
+    if (engine === "supabase") {
+      const lead = await storage.supabaseDb.updateLead(req.params.id, {
+        status,
+        internalNotes
+      });
+      return res.json({ message: "Status updated successfully!", lead });
+    } else if (engine === "mongodb") {
       const query = { _id: req.params.id };
-      if (user.role === "vendor") {
-        query.assignedVendor = user._id;
-      }
+      if (user.role === "vendor") query.assignedVendor = user._id;
 
       const updateData = { status };
       if (internalNotes !== undefined) updateData.internalNotes = internalNotes;

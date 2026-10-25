@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: svn-solar-consulting
+    env: node
+    plan: free
+    region: singapore
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        value: https://ssusepzxdvlsrfhdwhzk.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_NAME
+        value: SVN Solar Admin
+      - key: ADMIN_EMAIL
+        value: admin@svnsolar.local
+      - key: ADMIN_PASSWORD
+        value: SVNAdmin#2026!

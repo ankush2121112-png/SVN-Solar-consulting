@@ -7,7 +7,10 @@ const router = express.Router();
 
 async function getCurrentUser(req) {
   if (!req.session.userId) return null;
-  if (storage.getMongoStatus()) {
+  const engine = storage.getEngine();
+  if (engine === "supabase") {
+    return await storage.supabaseDb.findUserById(req.session.userId);
+  } else if (engine === "mongodb") {
     return await User.findById(req.session.userId);
   } else {
     return storage.fallbackStore.users.find(u => u._id === req.session.userId) || null;
@@ -22,7 +25,16 @@ router.get("/mine", async (req, res, next) => {
       return res.status(401).json({ error: "Please log in to view solar systems." });
     }
 
-    if (storage.getMongoStatus()) {
+    const engine = storage.getEngine();
+
+    if (engine === "supabase") {
+      let filter = {};
+      if (user.role !== "admin") {
+        filter = { customerId: user.id || user._id, customerEmail: user.email };
+      }
+      const systems = await storage.supabaseDb.getSolarSystems(filter);
+      return res.json({ systems });
+    } else if (engine === "mongodb") {
       let systems = [];
       if (user.role === "admin") {
         systems = await SolarSystem.find().sort({ createdAt: -1 });
@@ -48,7 +60,7 @@ router.get("/mine", async (req, res, next) => {
   }
 });
 
-// Admin creates a solar system record for a customer
+// Admin creates a solar system record
 router.post("/", async (req, res, next) => {
   try {
     const user = await getCurrentUser(req);
@@ -79,11 +91,33 @@ router.post("/", async (req, res, next) => {
     }
 
     const systemId = "SVN-SYS-" + Math.floor(100 + Math.random() * 900);
+    const engine = storage.getEngine();
 
-    if (storage.getMongoStatus()) {
-      // Find customer user if registered
+    if (engine === "supabase") {
+      const custUser = await storage.supabaseDb.findUserByEmail(customerEmail);
+      const newSys = await storage.supabaseDb.createSolarSystem({
+        systemId,
+        customer: custUser ? (custUser.id || custUser._id) : null,
+        customerEmail: String(customerEmail).trim().toLowerCase(),
+        customerName: String(customerName).trim(),
+        customerPhone: String(customerPhone).trim(),
+        city: String(city).trim(),
+        capacityKw: Number(capacityKw),
+        systemType,
+        panelBrand,
+        panelQuantity: Number(panelQuantity),
+        inverterBrand,
+        inverterCapacity,
+        warrantyYears: Number(warrantyYears),
+        inverterWarrantyYears: Number(inverterWarrantyYears),
+        notes
+      });
+      return res.status(201).json({
+        message: "Customer Solar File & Warranty record created successfully!",
+        system: newSys
+      });
+    } else if (engine === "mongodb") {
       const custUser = await User.findOne({ email: String(customerEmail).trim().toLowerCase() });
-
       const newSys = await SolarSystem.create({
         systemId,
         customer: custUser ? custUser._id : null,
@@ -102,7 +136,6 @@ router.post("/", async (req, res, next) => {
         notes,
         status: "Active"
       });
-
       return res.status(201).json({
         message: "Customer Solar File & Warranty record created successfully!",
         system: newSys
